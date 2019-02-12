@@ -671,14 +671,12 @@ namespace RaceTracker.Data
             
             for (int i = 1; i <= count; i++)
             {
-                var quality = rnd.Next(1, 5);
-
                 var p = new Participant()
                 {
                     Id = Guid.NewGuid(),
-                    Bib = (startingBib + i).ToString(),
+                    Bib = (startingBib + i - 1).ToString(),
                     FirstName = "Participant",
-                    LastName = (startingBib + i).ToString(),
+                    LastName = (startingBib + i - 1).ToString(),
                     City = "Charleston",
                     Region = "SC",
                     Age = $"{rnd.Next(18, 70)}",
@@ -687,22 +685,38 @@ namespace RaceTracker.Data
                     Checkins = new List<Checkin>(),
                     RaceId = race.Id
                 };
-                //context.Participants.Add(p);
-                //context.SaveChanges();
 
                 p = service.AddParticipant(p).Result;
-                                
-                DateTime lastCheckin = DateTime.Now;
+            }
+            /* 
+            // start the race
+            var startedRace = service.StartRace("+15015551212", race.Code, race.Start).Result;
 
-                /*
+            foreach (var participant in race.Participants)
+            {
+                var quality = rnd.Next(1, 5);
+                DateTime lastCheckin = race.Start;
+
                 foreach (var segment in race.Segments.OrderBy(x => x.Order))
                 {
-                    var checkin = service.AddCheckin(p.Id, "+15015551212", CalculateWhen(segment.Distance, quality, lastCheckin));
-                    service.ConfirmCheckin(checkin.Id);
-                    lastCheckin = checkin.When;
+                    var message = new Message() {
+                        Id = Guid.NewGuid(),
+                        From = "+15015551212",
+                        Body = participant.Bib,
+                        FromCity = "NONE",
+                        FromState = "NONE",
+                        FromZip = "NON",
+                        FromCountry = "NONE",
+                        Received = CalculateWhen(segment.Distance, quality, lastCheckin)
+                    };
+
+                    message = service.AddMessage(message).Result;
+                    var responseString = service.HandleMessage(message).Result;
+                    
+                    lastCheckin = message.Received;
                 }
-                */
             }
+            */
         }
 
         private DateTime CalculateWhen(double distance, int quality, DateTime last)

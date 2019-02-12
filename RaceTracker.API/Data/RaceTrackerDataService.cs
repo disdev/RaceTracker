@@ -1,13 +1,19 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using RaceTracker.Data.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Twilio;
 using Twilio.AspNet.Common;
 using Twilio.AspNet.Core;
+using Twilio.Rest.Api.V2010.Account;
+using Twilio.Rest.Lookups.V1;
 using Twilio.TwiML;
+using Twilio.Types;
 
 namespace RaceTracker.Data
 {
@@ -16,7 +22,17 @@ namespace RaceTracker.Data
         private const int START_CHECKPOINT = 0;
 
         private RaceTrackerContext Db;
+
+        private string TwilioAccountSid = "";
+        private string TwilioAuthToken = "";
         
+        public RaceTrackerDataService(RaceTrackerContext context, IOptions<TwilioSettings> settings)
+        {
+            Db = context;
+            TwilioAccountSid = settings.Value.AccountSid;
+            TwilioAuthToken = settings.Value.AuthToken;
+        }
+
         public RaceTrackerDataService(RaceTrackerContext context)
         {
             Db = context;
@@ -60,6 +76,14 @@ namespace RaceTracker.Data
                 .Include(x => x.Participants)
                     .ThenInclude(x => x.Checkins)
                 .FirstAsync();
+        }
+
+        public async Task<List<Segment>> GetSegments()
+        {
+            return await Db.Segments
+                .Include(x => x.ToCheckpoint)
+                .Include(x => x.FromCheckpoint)
+                .OrderBy(x => x.Order).ToListAsync();
         }
 
         public async Task<Segment> AddSegment(Segment segment) 
@@ -174,8 +198,9 @@ namespace RaceTracker.Data
             return await Db.Leaders
                 .Include(x => x.Participant)
                 .Include(x => x.LastCheckin)
+                    .ThenInclude(x => x.Segment)
+                .OrderBy(x => x.LastCheckin.When)
                 .OrderByDescending(x => x.Progress)
-                .OrderByDescending(x => x.LastCheckin.When)
                 .ToListAsync();
         }
 
@@ -221,38 +246,58 @@ namespace RaceTracker.Data
             var participant = await Db.Participants.Where(x => x.Bib == number).Include(x => x.Race).Include(x => x.Checkins).ThenInclude(x => x.Segment).SingleAsync();
             var monitors = await Db.Monitors.Where(x => x.PhoneNumber == message.From).Include(x => x.Checkpoint).ToListAsync();
             
-            // Where do we think the participant should be?
-            var checkinCount = participant.Checkins.Count;
-            var expectedSegment = new Segment();
-            if (checkinCount > 0)
+            if (participant.Status == Status.Started)
             {
-                var lastSegment = participant.Checkins.OrderByDescending(x => x.When).First().Segment;
-                expectedSegment = await Db.Segments.Where(x => x.Order == (lastSegment.Order + 1) && x.RaceId == participant.RaceId).FirstAsync();
+                // Where do we think the participant should be?
+                var checkinCount = participant.Checkins.Count;
+                var expectedSegment = new Segment();
+                if (checkinCount > 0)
+                {
+                    var lastSegment = participant.Checkins.OrderByDescending(x => x.When).First().Segment;
+                    expectedSegment = await Db.Segments.Where(x => x.Order == (lastSegment.Order + 1) && x.RaceId == participant.RaceId).FirstAsync();
+                }
+                else
+                {
+                    expectedSegment = await Db.Segments.Where(x => x.Order == 1 && x.RaceId == participant.RaceId).FirstAsync();
+                }
+                
+                var checkin = new Checkin()
+                {
+                    Id = Guid.NewGuid(),
+                    Participant = participant,
+                    Segment = expectedSegment,
+                    When = message.Received,
+                    Confirmed = monitors.Any(x => x.Checkpoint == expectedSegment.ToCheckpoint), // Does the monitor's checkpoints match where the participant should be?
+                    Message = message
+                };
+
+                Db.Checkins.Add(checkin);
+                await Db.SaveChangesAsync();
+                
+                if (checkin.Confirmed)
+                {
+                    await ConfirmCheckin(checkin, expectedSegment);
+                }
+
+                return checkin;
             }
             else
             {
-                expectedSegment = await Db.Segments.Where(x => x.Order == 1 && x.RaceId == participant.RaceId).FirstAsync();
+                return null;
             }
-            
-            var checkin = new Checkin()
-            {
-                Id = Guid.NewGuid(),
-                Participant = participant,
-                Segment = expectedSegment,
-                When = message.Received,
-                Confirmed = monitors.Any(x => x.Checkpoint == expectedSegment.ToCheckpoint), // Does the monitor's checkpoints match where the participant should be?
-                Message = message
-            };
+        }
 
-            Db.Checkins.Add(checkin);
-            await Db.SaveChangesAsync();
-            
-            if (checkin.Confirmed)
+        private async Task<Participant> FinishRace(Participant participant, Checkin checkin)
+        {
+            var finish = await Db.Checkpoints.Where(x => x.Number == 0).FirstAsync();
+
+            if (checkin.Segment.ToCheckpointId == finish.Id)
             {
-                await UpdateLeader(checkin);
+                participant.Status = Status.Finished;
+                await Db.SaveChangesAsync();
             }
 
-            return checkin;
+            return participant;
         }
 
         public async Task<Leader> UpdateLeader(Checkin checkin)
@@ -282,24 +327,24 @@ namespace RaceTracker.Data
 
         public async Task<Checkin> ConfirmCheckin(Guid checkinId, Guid segmentId)
         {
-            var checkin = Db.Checkins.Where(x => x.Id == checkinId).Include(x => x.Participant).Include(x => x.Segment).First();
-            
+            return await ConfirmCheckin(await Db.Checkins.FirstAsync(x => x.Id == checkinId), await Db.Segments.FirstAsync(x => x.Id == segmentId));
+        }
+        public async Task<Checkin> ConfirmCheckin(Checkin checkin, Segment segment)
+        {
+            checkin.SegmentId = segment.Id;
             checkin.Confirmed = true;
-            checkin.Segment = await Db.Segments.FirstAsync(x => x.Id == segmentId);
+            
+            await UpdateLeader(checkin);
 
-            await Db.SaveChangesAsync();
-
-            NotifyWatchers(checkin);
-
-            /*
             // Is this the finish?
             if (checkin.Segment.Id == Db.Segments.Where(x => x.RaceId == checkin.Participant.RaceId).OrderByDescending(x => x.Order).First().Id)
             {
                 checkin.Participant.Status = Status.Finished;
             }
 
-            Db.SaveChanges();
-            */
+            await Db.SaveChangesAsync();
+
+            NotifyWatchers(checkin);
 
             return checkin;
         }
@@ -370,32 +415,52 @@ namespace RaceTracker.Data
 
         private void SendSms(string to, string body)
         {
-            /*const string accountSid = "AC0eb469b9f2f45b29bfdade6e4df97560";
-            const string authToken = "a6adf1c8ff55a0c532778c5039039522";
-
-            TwilioClient.Init(accountSid, authToken);
+            TwilioClient.Init(TwilioAccountSid, TwilioAuthToken);
 
             var sendTo = new PhoneNumber(to);
             var message = MessageResource.Create(
                 to,
                 from: new PhoneNumber("+15014062030"),
                 body: body);
-                 */
         }
 
+        public async Task<Watcher> Subscribe(string bib, string phoneNumber)
+        {
+            var phone = CheckPhoneNumber(phoneNumber);
+            var participant = await Db.Participants.SingleAsync(x => x.Bib == bib);
+            var exists = await Db.Watchers.AnyAsync(x => x.ParticipantId == participant.Id && x.PhoneNumber == phone);
+
+            if (!exists) 
+            {
+                var watcher = new Watcher()
+                {
+                    Id = Guid.NewGuid(),
+                    PhoneNumber = phone,
+                    ParticipantId = participant.Id
+                };
+
+                await Db.Watchers.AddAsync(watcher);
+                await Db.SaveChangesAsync();
+
+                SendSms(phone, $"Subscribed to race updates for {participant.FullName}. Reply STOP to end.");
+
+                return watcher;
+            }
+            else
+            {
+                SendSms(phone, $"Subscribed to race updates for {participant.FullName}. Reply STOP to end.");
+                return await Db.Watchers.FirstAsync(x => x.ParticipantId == participant.Id && x.PhoneNumber == phone);
+            }
+        }
         public string CheckPhoneNumber(string inputNumber)
         {
-            // const string accountSid = "AC0eb469b9f2f45b29bfdade6e4df97560";
-            // const string authToken = "a6adf1c8ff55a0c532778c5039039522";
+            TwilioClient.Init(TwilioAccountSid, TwilioAuthToken);
 
-            // TwilioClient.Init(accountSid, authToken);
+            var phoneNumber = PhoneNumberResource.Fetch(
+                new PhoneNumber(inputNumber),
+                type: new List<string> { "carrier" });
 
-            // var phoneNumber = PhoneNumberResource.Fetch(
-            //     new PhoneNumber(inputNumber),
-            //     type: new List<string> { "carrier" });
-
-            // return phoneNumber.PhoneNumber.ToString();
-            return inputNumber;
+            return phoneNumber.PhoneNumber.ToString();
         }
     }
 }

@@ -27,7 +27,7 @@ namespace RaceTracker
                 {
                     var context = services.GetRequiredService<RaceTrackerContext>();
                     var init = new DbInitializer();
-                    //init.Initialize(context);
+                    init.Initialize(context);
                 }
                 catch (Exception ex)
                 {

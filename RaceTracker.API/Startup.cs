@@ -34,10 +34,12 @@ namespace RaceTracker
             .AddJsonOptions(options => {
                 options.SerializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                 options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
-                //options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+                options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
             });;
             services.AddDbContext<RaceTrackerContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
             services.AddScoped<RaceTrackerDataService>();
+
+            services.Configure<TwilioSettings>(Configuration.GetSection("TwilioSettings"));
 
             services.AddCors();
         }
@@ -58,7 +60,8 @@ namespace RaceTracker
             app.UseCors(builder => 
                 builder.AllowAnyOrigin()
                        .AllowAnyHeader()
-                       .AllowCredentials());
+                       //.AllowCredentials()
+                       );
 
             app.UseHttpsRedirection();
             app.UseMvc();
