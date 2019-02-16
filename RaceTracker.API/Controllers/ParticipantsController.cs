@@ -21,13 +21,6 @@ namespace RaceTracker.Controllers
             dataService = svc;
         }
 
-        // GET: api/participants
-        [HttpGet]
-        public async Task<List<Leader>> GetParticipants()
-        {
-            return await dataService.GetLeaders();
-        }
-
         [HttpPost]
         public async Task<Participant> AddOrUpdateParticipant([FromBody] Participant participant)
         {
