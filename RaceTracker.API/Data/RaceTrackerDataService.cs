@@ -111,7 +111,16 @@ namespace RaceTracker.Data
             }
             
             participant.Id = Guid.NewGuid();
-            Db.Participants.Add(participant);
+            await Db.Participants.AddAsync(participant);
+
+            await Db.Leaders.AddAsync(new Leader() {
+                Id = Guid.NewGuid(),
+                ParticipantId = participant.Id,
+                Status = Status.Registered,
+                Progress = 0,
+                ElapsedTime = 0
+            });
+
             await Db.SaveChangesAsync();
             return participant;
         }
@@ -390,17 +399,14 @@ namespace RaceTracker.Data
                 
                 race.Start = when;
 
-                var participants = Db.Participants.Where(x => x.RaceId == race.Id).ToList();
-                participants.ForEach(async x => { 
-                    x.Status = Status.Started; 
+                await Db.Participants.Where(x => x.RaceId == race.Id).ForEachAsync(participant => {
+                    participant.Status = Status.Started;
+                });
 
-                    await Db.Leaders.AddAsync(new Leader() {
-                        Id = Guid.NewGuid(),
-                        Participant = x,
-                        Status = Status.Started,
-                        Progress = 0,
-                        ElapsedTime = 0
-                    });
+                await Db.Leaders.Where(x => x.Participant.RaceId == race.Id).ForEachAsync(leader => {
+                    leader.Status = Status.Started;
+                    leader.Progress = 0;
+                    leader.ElapsedTime = 0;
                 });
 
                 Db.SaveChanges();
