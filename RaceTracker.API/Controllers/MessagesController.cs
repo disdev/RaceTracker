@@ -33,7 +33,7 @@ namespace RaceTracker.Controllers
                 FromState = incomingSms.FromState,
                 FromZip = incomingSms.FromZip,
                 FromCountry = incomingSms.FromCountry,
-                Received = DateTime.Now
+                Received = DateTime.UtcNow
             };
 
             message = await dataService.AddMessage(message);

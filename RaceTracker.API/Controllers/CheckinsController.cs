@@ -40,7 +40,7 @@ namespace RaceTracker.Controllers
         }
 
         [HttpPost("confirm")]
-        public async Task<Checkin> Confirm([FromQuery] Guid checkinId, [FromBody] Guid segmentId)
+        public async Task<Checkin> Confirm([FromQuery] Guid checkinId, [FromQuery] Guid segmentId)
         {
             return await dataService.ConfirmCheckin(checkinId, segmentId);
         }

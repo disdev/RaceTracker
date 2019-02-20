@@ -25,12 +25,14 @@ namespace RaceTracker.Data
 
         private string TwilioAccountSid = "";
         private string TwilioAuthToken = "";
+        private string TwilioAdminPhone = "";
         
         public RaceTrackerDataService(RaceTrackerContext context, IOptions<TwilioSettings> settings)
         {
             Db = context;
             TwilioAccountSid = settings.Value.AccountSid;
             TwilioAuthToken = settings.Value.AuthToken;
+            TwilioAdminPhone = settings.Value.AdminPhone;
         }
 
         public RaceTrackerDataService(RaceTrackerContext context)
@@ -244,7 +246,15 @@ namespace RaceTracker.Data
             // We're checking in one or more runners
             foreach (var part in message.Body.Split(' '))
             {
-                checkins.Add(await this.AddCheckin(part, message));
+                try
+                {
+                    checkins.Add(await this.AddCheckin(part, message));
+                }
+                catch (Exception ex)
+                {
+                    SendSms(TwilioAdminPhone, $"Checkin error! Bib {part}, from {message.From}. Msg: {message.Id}");
+                }
+                
             }
 
             return checkins;
@@ -313,8 +323,7 @@ namespace RaceTracker.Data
         {
             // now update the leaderboard
             var leader = await Db.Leaders.SingleOrDefaultAsync(x => x.ParticipantId == checkin.ParticipantId);
-            leader.Participant = checkin.Participant;
-            leader.ParticipantId = checkin.Participant.Id;
+            leader.ParticipantId = checkin.ParticipantId;
             leader.Status = Status.Started;
             leader.Progress = checkin.Segment.Order;
             leader.LastCheckin = checkin;
@@ -336,13 +345,18 @@ namespace RaceTracker.Data
 
         public async Task<Checkin> ConfirmCheckin(Guid checkinId, Guid segmentId)
         {
-            return await ConfirmCheckin(await Db.Checkins.FirstAsync(x => x.Id == checkinId), await Db.Segments.FirstAsync(x => x.Id == segmentId));
+            return await ConfirmCheckin(
+                await Db.Checkins.Include(x => x.Participant).FirstAsync(x => x.Id == checkinId), 
+                await Db.Segments.FirstAsync(x => x.Id == segmentId));
         }
         public async Task<Checkin> ConfirmCheckin(Checkin checkin, Segment segment)
         {
             checkin.SegmentId = segment.Id;
             checkin.Confirmed = true;
-            
+
+            Db.Checkins.Update(checkin);
+            await Db.SaveChangesAsync();
+
             await UpdateLeader(checkin);
 
             // Is this the finish?
