@@ -250,7 +250,7 @@ namespace RaceTracker.Data
                 {
                     checkins.Add(await this.AddCheckin(part, message));
                 }
-                catch (Exception ex)
+                catch
                 {
                     SendSms(TwilioAdminPhone, $"Checkin error! Bib {part}, from {message.From}. Msg: {message.Id}");
                 }
@@ -387,7 +387,7 @@ namespace RaceTracker.Data
             Db.Watchers.Add(watcher);
             Db.SaveChanges();
 
-            SendSms(validatedNumber, $"You're signed up to receive LOViT updates for {participant.FullName}. Reply STOP to end.");
+            SendSms(validatedNumber, $"Welcome to LOViT race tracking! You're signed up to receive updates for {participant.FullName}. Reply STOP to end.");
 
             return watcher;
         }
