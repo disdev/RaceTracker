@@ -399,7 +399,7 @@ namespace RaceTracker.Data
 
             foreach (var watcher in participant.Watchers)
             {
-                SendSms(watcher.PhoneNumber, $"{participant.FullName} checked into {segment.ToCheckpoint.Name} at {segment.TotalDistance} miles.");
+                SendSms(watcher.PhoneNumber, $"{participant.FullName} checked into {segment.ToCheckpoint.Name} at {segment.TotalDistance} miles. http://track.runlovit.com/participant/{participant.Bib}");
             }
         }
 
@@ -413,8 +413,12 @@ namespace RaceTracker.Data
                 
                 race.Start = when;
 
-                await Db.Participants.Where(x => x.RaceId == race.Id).ForEachAsync(participant => {
+                await Db.Participants.Include(x => x.Watchers).Where(x => x.RaceId == race.Id).ForEachAsync(participant => {
                     participant.Status = Status.Started;
+
+                    participant.Watchers.ForEach(watcher => {
+                        SendSms(watcher.PhoneNumber, $"{participant.FullName} has started the LOVIT {race.Code}.");
+                    });
                 });
 
                 await Db.Leaders.Where(x => x.Participant.RaceId == race.Id).ForEachAsync(leader => {
@@ -424,7 +428,7 @@ namespace RaceTracker.Data
                 });
 
                 Db.SaveChanges();
-
+                
                 return race;
             }
             else
@@ -462,13 +466,13 @@ namespace RaceTracker.Data
                 await Db.Watchers.AddAsync(watcher);
                 await Db.SaveChangesAsync();
 
-                SendSms(phone, $"Subscribed to race updates for {participant.FullName}. Reply STOP to end.");
+                SendSms(phoneNumber, $"Welcome to LOViT race tracking! You're signed up to receive updates for {participant.FullName}. Reply STOP to end.");
 
                 return watcher;
             }
             else
             {
-                SendSms(phone, $"Subscribed to race updates for {participant.FullName}. Reply STOP to end.");
+                SendSms(phoneNumber, $"Welcome to LOViT race tracking! You're signed up to receive updates for {participant.FullName}. Reply STOP to end.");
                 return await Db.Watchers.FirstAsync(x => x.ParticipantId == participant.Id && x.PhoneNumber == phone);
             }
         }
