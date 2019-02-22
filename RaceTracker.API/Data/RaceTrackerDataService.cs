@@ -235,7 +235,7 @@ namespace RaceTracker.Data
             else
             {
                 var checkins = await this.AddCheckins(message);
-                return $"Checked in {checkins.Count} runner{(checkins.Count > 1 ? "s" : "")}.";
+                return $"Checked in {checkins.Count} runner{(checkins.Count > 1 || checkins.Count == 0 ? "s" : "")}.";
             }
         }
 
@@ -296,6 +296,10 @@ namespace RaceTracker.Data
                 if (checkin.Confirmed)
                 {
                     await ConfirmCheckin(checkin, expectedSegment);
+                }
+                else
+                {
+                    SendSms(TwilioAdminPhone, $"Checkin to confirm: {participant.LastName} should be at {expectedSegment.Name}. http://track.runlovit.com/checkins");
                 }
 
                 return checkin;
