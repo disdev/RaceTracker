@@ -14,7 +14,7 @@ using RaceTracker.Data;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json;
-using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.Swagger;
 
 namespace RaceTracker
 {
@@ -47,7 +47,7 @@ namespace RaceTracker
             // Register the Swagger generator, defining 1 or more Swagger documents
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Race Tracker API", Version = "v1" });
+                c.SwaggerDoc("v1", new Info { Title = "Race Tracker API", Version = "v1" });
             });
         }
 
