@@ -28,7 +28,7 @@ namespace RaceTracker.Controllers
 
         // GET api/values/5
         [HttpGet("{id}")]
-        public async Task<Checkin> Get(Guid id)
+        public async Task<Checkin> GetById(Guid id)
         {
             return await dataService.GetCheckin(id);
         }

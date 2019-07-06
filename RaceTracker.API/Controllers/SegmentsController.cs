@@ -21,9 +21,9 @@ namespace RaceTracker.Controllers
             dataService = svc;
         }
 
-        // GET: api/Races
+        // GET: api/Segments
         [HttpGet]
-        public async Task<List<Segment>> GetLeaders()
+        public async Task<List<Segment>> GetSegments()
         {
             return await dataService.GetSegments();
         }

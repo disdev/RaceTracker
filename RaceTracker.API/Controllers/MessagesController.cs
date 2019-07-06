@@ -44,11 +44,5 @@ namespace RaceTracker.Controllers
             response.Message(responseString);
             return new TwiMLResult(responseString);
         }
-
-        [HttpGet("unconfirmed")]
-        public void GetUnconfirmed()
-        {
-            
-        }
     }
 }
