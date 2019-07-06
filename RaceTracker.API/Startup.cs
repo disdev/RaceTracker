@@ -14,6 +14,7 @@ using RaceTracker.Data;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json;
+using Microsoft.OpenApi.Models;
 
 namespace RaceTracker
 {
@@ -42,6 +43,12 @@ namespace RaceTracker
             services.Configure<TwilioSettings>(Configuration.GetSection("TwilioSettings"));
 
             services.AddCors();
+
+            // Register the Swagger generator, defining 1 or more Swagger documents
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Race Tracker API", Version = "v1" });
+            });
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -65,6 +72,16 @@ namespace RaceTracker
 
             app.UseHttpsRedirection();
             app.UseMvc();
+
+            // Enable middleware to serve generated Swagger as a JSON endpoint.
+            app.UseSwagger();
+
+            // Enable middleware to serve swagger-ui (HTML, JS, CSS, etc.),
+            // specifying the Swagger JSON endpoint.
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Race Tracker API V1");
+            });
         }
     }
 }

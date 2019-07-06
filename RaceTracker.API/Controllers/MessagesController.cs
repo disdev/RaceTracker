@@ -13,7 +13,7 @@ namespace RaceTracker.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class MessagesController : TwilioController
+    public class MessagesController : Controller
     {
         private readonly RaceTrackerDataService dataService;
 
@@ -42,7 +42,7 @@ namespace RaceTracker.Controllers
 
             var response = new MessagingResponse();
             response.Message(responseString);
-            return TwiML(response);
+            return new TwiMLResult(responseString);
         }
 
         [HttpGet("unconfirmed")]
