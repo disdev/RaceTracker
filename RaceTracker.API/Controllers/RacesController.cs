@@ -30,7 +30,7 @@ namespace RaceTracker.Controllers
 
         // GET: api/Races/5
         [HttpGet("{id}")]
-        public async Task<IActionResult> GetRace([FromRoute] Guid id)
+        public async Task<IActionResult> GetRaceById([FromRoute] Guid id)
         {
             if (!ModelState.IsValid)
             {

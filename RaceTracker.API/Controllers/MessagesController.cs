@@ -23,7 +23,7 @@ namespace RaceTracker.Controllers
         }
 
         [HttpPost]
-        public async Task<TwiMLResult> Post([FromForm] SmsRequest incomingSms)
+        public async Task<TwiMLResult> AddMessage([FromForm] SmsRequest incomingSms)
         {
             var message = new Message() {
                 Id = Guid.NewGuid(),

@@ -21,26 +21,26 @@ namespace RaceTracker.Controllers
 
         // GET api/values
         [HttpGet]
-        public async Task<List<Checkin>> Get()
+        public async Task<List<Checkin>> GetTopCheckins()
         {
             return await dataService.GetTopCheckins(100);
         }
 
         // GET api/values/5
         [HttpGet("{id}")]
-        public async Task<Checkin> GetById(Guid id)
+        public async Task<Checkin> GetCheckinById(Guid id)
         {
             return await dataService.GetCheckin(id);
         }
 
         [HttpGet("unconfirmed")]
-        public async Task<List<Checkin>> GetUnconfirmed()
+        public async Task<List<Checkin>> GetUnconfirmedCheckins()
         {
             return await dataService.GetUnconfirmedCheckins();
         }
 
         [HttpPost("confirm")]
-        public async Task<Checkin> Confirm([FromQuery] Guid checkinId, [FromQuery] Guid segmentId)
+        public async Task<Checkin> ConfirmCheckin([FromQuery] Guid checkinId, [FromQuery] Guid segmentId)
         {
             return await dataService.ConfirmCheckin(checkinId, segmentId);
         }
