@@ -215,6 +215,18 @@ namespace RaceTracker.Data
                 .ToListAsync();
         }
 
+        public async Task<List<Leader>> GetLeadersByRaceId(Guid raceId)
+        {
+            return await Db.Leaders
+                .Include(x => x.Participant)
+                .Include(x => x.LastCheckin)
+                    .ThenInclude(x => x.Segment)
+                .Where(x => x.Participant.RaceId == raceId)
+                .OrderBy(x => x.LastCheckin.When)
+                .OrderByDescending(x => x.Progress)
+                .ToListAsync();
+        }
+
         public async Task<string> HandleMessage(Message message) 
         {
             // Split the message body into parts

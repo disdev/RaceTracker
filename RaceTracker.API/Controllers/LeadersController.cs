@@ -27,5 +27,11 @@ namespace RaceTracker.Controllers
         {
             return await dataService.GetLeaders();
         }
+
+        [HttpGet("{raceId}")]
+        public async Task<List<Leader>> GetLeadersByRaceId([FromRoute] Guid raceId)
+        {
+            return await dataService.GetLeadersByRaceId(raceId);
+        }
     }
 }
