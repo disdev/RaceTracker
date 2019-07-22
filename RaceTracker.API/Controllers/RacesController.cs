@@ -28,7 +28,7 @@ namespace RaceTracker.Controllers
             return await dataService.GetRaces();
         }
 
-        [HttpGet("event/{id}")]
+        [HttpGet("event/{raceEventId}")]
         public async Task<IActionResult> GetRaceByRaceEvent([FromRoute] Guid raceEventId)
         {
             var races = await dataService.GetRacesByRaceEvent(raceEventId);
