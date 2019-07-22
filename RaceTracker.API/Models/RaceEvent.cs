@@ -13,5 +13,6 @@ namespace RaceTracker.Data.Models
         public string Location { get; set; }
         public DateTime Start { get; set; }
         public List<Race> Races { get; set; }
+        public bool Current { get; set; }
     }
 }

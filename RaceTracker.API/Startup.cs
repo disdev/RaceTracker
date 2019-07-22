@@ -54,6 +54,8 @@ namespace RaceTracker
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
+            UpdateDatabase();
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
@@ -82,6 +84,19 @@ namespace RaceTracker
             {
                 c.SwaggerEndpoint("/swagger/v1/swagger.json", "Race Tracker API V1");
             });
+        }
+
+        private static void UpdateDatabase(IApplicationBuilder app)
+        {
+            using (var serviceScope = app.ApplicationServices
+                .GetRequiredService<IServiceScopeFactory>()
+                .CreateScope())
+                {
+                    using (var context = serviceScope.ServiceProvider.GetService<RaceTrackerContext>())
+                    {
+                        context.Database.Migrate();
+                    }
+                }
         }
     }
 }
