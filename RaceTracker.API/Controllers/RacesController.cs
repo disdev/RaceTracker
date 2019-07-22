@@ -28,6 +28,13 @@ namespace RaceTracker.Controllers
             return await dataService.GetRaces();
         }
 
+        [HttpGet("event/{id}")]
+        public async Task<IActionResult> GetRaceByRaceEvent([FromRoute] Guid raceEventId)
+        {
+            var races = await dataService.GetRacesByRaceEvent(raceEventId);
+            return Ok(races);
+        }
+
         // GET: api/Races/5
         [HttpGet("{id}")]
         public async Task<IActionResult> GetRaceById([FromRoute] Guid id)

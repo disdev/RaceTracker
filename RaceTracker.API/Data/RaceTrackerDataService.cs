@@ -80,6 +80,13 @@ namespace RaceTracker.Data
                 .FirstAsync();
         }
 
+        public async Task<List<Race>> GetRacesByRaceEvent(Guid raceEventId)
+        {
+            return await Db.Races
+                .Where(x => x.RaceEventId == raceEventId)
+                .ToListAsync();
+        }
+
         public async Task<List<Segment>> GetSegments()
         {
             return await Db.Segments
